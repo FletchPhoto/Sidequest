@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no" />
+  <meta name="theme-color" content="#0e0b16" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Sidequest" />
+  <title>Sidequest</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="icon-180.png" />
+  <style>
+    :root {
+      --bg: #0e0b16;
+      --bg2: #16101f;
+      --card: #1d1630;
+      --card2: #251b3d;
+      --line: #34284f;
+      --text: #f4f0ff;
+      --muted: #a99fc6;
+      --gold: #ffcb45;
+      --gold2: #ff9d2f;
+      --green: #4ce0a8;
+      --r-common: #8a93a8;
+      --r-rare: #4aa8ff;
+      --r-legendary: #ffb13d;
+      --r-mythic: #ff5db1;
+      --shadow: 0 18px 40px rgba(0,0,0,.45);
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body { margin: 0; height: 100%; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: radial-gradient(120% 80% at 50% -10%, #241a3d 0%, var(--bg) 55%);
+      color: var(--text);
+      min-height: 100dvh;
+      padding: env(safe-area-inset-top) 16px calc(env(safe-area-inset-bottom) + 16px);
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+    header {
+      text-align: center;
+      padding: 18px 0 10px;
+      position: relative;
+    }
+    header h1 {
+      margin: 0;
+      font-size: 30px;
+      letter-spacing: 2px;
+      font-weight: 800;
+      background: linear-gradient(180deg, #fff, var(--gold));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      text-shadow: 0 2px 18px rgba(255,203,69,.25);
+    }
+    header p { margin: 4px 0 0; color: var(--muted); font-size: 12.5px; letter-spacing: .5px; }
+    .icon-btn {
+      position: absolute; top: 16px;
+      width: 42px; height: 42px; border-radius: 13px;
+      background: var(--card); border: 1px solid var(--line);
+      color: var(--text); font-size: 19px; display: grid; place-items: center;
+      cursor: pointer;
+    }
+    .icon-btn.left { left: 0; }
+    .icon-btn.right { right: 0; }
+
+    .segmented {
+      display: flex; gap: 4px; background: var(--card); border: 1px solid var(--line);
+      border-radius: 14px; padding: 4px; margin: 6px auto 12px; max-width: 420px;
+    }
+    .segmented button {
+      flex: 1; border: 0; background: transparent; color: var(--muted);
+      padding: 9px 6px; border-radius: 10px; font-weight: 700; font-size: 13px; cursor: pointer;
+      transition: .15s;
+    }
+    .segmented button.active { background: linear-gradient(180deg, var(--gold), var(--gold2)); color: #2a1a00; box-shadow: 0 4px 14px rgba(255,157,47,.3); }
+
+    main { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; max-width: 460px; width: 100%; margin: 0 auto; }
+
+    /* Slot machine */
+    .machine {
+      width: 100%; background: linear-gradient(180deg, var(--card2), var(--card));
+      border: 1px solid var(--line); border-radius: 22px; padding: 16px;
+      box-shadow: var(--shadow); position: relative; overflow: hidden;
+    }
+    .machine::before {
+      content: ""; position: absolute; inset: 0; border-radius: 22px;
+      box-shadow: inset 0 0 0 2px rgba(255,255,255,.04); pointer-events: none;
+    }
+    .reel-window {
+      height: 132px; border-radius: 16px; overflow: hidden; position: relative;
+      background: #0c0814; border: 1px solid #2a2040;
+      box-shadow: inset 0 12px 24px rgba(0,0,0,.6), inset 0 -12px 24px rgba(0,0,0,.6);
+    }
+    .reel-window::after {
+      content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 56px;
+      transform: translateY(-50%); border-top: 1px solid rgba(255,203,69,.25);
+      border-bottom: 1px solid rgba(255,203,69,.25); pointer-events: none;
+    }
+    .reel { position: absolute; left: 0; right: 0; top: 0; will-change: transform; }
+    .slot {
+      height: 44px; display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 16px; padding: 0 14px; text-align: center;
+      color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .reel.spinning { color: #fff; }
+
+    .lever {
+      margin-top: 16px; width: 100%; border: 0; cursor: pointer;
+      background: linear-gradient(180deg, var(--gold), var(--gold2));
+      color: #2a1500; font-size: 21px; font-weight: 900; letter-spacing: 1.5px;
+      padding: 18px; border-radius: 18px; box-shadow: 0 10px 26px rgba(255,157,47,.4);
+      transition: transform .08s;
+    }
+    .lever:active { transform: scale(.97); }
+    .lever:disabled { filter: grayscale(.4) brightness(.8); cursor: default; }
+
+    /* Result card */
+    .result {
+      width: 100%; margin-top: 16px; background: linear-gradient(180deg, var(--card2), var(--card));
+      border: 1px solid var(--line); border-radius: 20px; padding: 18px; box-shadow: var(--shadow);
+      opacity: 0; transform: translateY(10px); transition: .35s; display: none;
+    }
+    .result.show { opacity: 1; transform: none; display: block; animation: pop .4s; }
+    @keyframes pop { 0% { transform: scale(.95) } 60% { transform: scale(1.02) } 100% { transform: scale(1) } }
+    .badge {
+      display: inline-block; font-size: 11px; font-weight: 800; letter-spacing: 1.5px;
+      text-transform: uppercase; padding: 5px 11px; border-radius: 999px; color: #0b0712;
+    }
+    .badge.common { background: var(--r-common); }
+    .badge.rare { background: var(--r-rare); }
+    .badge.legendary { background: var(--r-legendary); box-shadow: 0 0 16px rgba(255,177,61,.6); }
+    .badge.mythic { background: var(--r-mythic); color: #fff; box-shadow: 0 0 18px rgba(255,93,177,.7); }
+    .result h2 { margin: 12px 0 6px; font-size: 24px; line-height: 1.15; }
+    .result .desc { color: var(--muted); font-size: 15px; line-height: 1.45; margin: 0 0 14px; }
+    .chips { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 14px; }
+    .chip {
+      font-size: 12px; font-weight: 600; color: var(--text); background: #0e0a18;
+      border: 1px solid var(--line); padding: 6px 10px; border-radius: 10px;
+    }
+    .forfeit {
+      background: rgba(255,93,177,.08); border: 1px solid rgba(255,93,177,.3);
+      border-radius: 12px; padding: 11px 13px; margin-bottom: 14px; font-size: 14px;
+    }
+    .forfeit b { color: var(--r-mythic); }
+    .result-actions { display: flex; gap: 10px; }
+    .result-actions button {
+      flex: 1; padding: 14px; border-radius: 14px; font-weight: 800; font-size: 15px; cursor: pointer; border: 0;
+    }
+    .btn-reroll { background: var(--card); color: var(--text); border: 1px solid var(--line) !important; }
+    .btn-accept { background: linear-gradient(180deg, var(--green), #2bbd87); color: #062317; }
+
+    .empty {
+      width: 100%; margin-top: 16px; text-align: center; color: var(--muted);
+      background: var(--card); border: 1px dashed var(--line); border-radius: 18px; padding: 22px; display: none;
+    }
+    .empty.show { display: block; }
+
+    /* Sheets / modals */
+    .sheet-backdrop {
+      position: fixed; inset: 0; background: rgba(4,2,10,.6); backdrop-filter: blur(3px);
+      display: none; align-items: flex-end; justify-content: center; z-index: 50;
+    }
+    .sheet-backdrop.show { display: flex; }
+    .sheet {
+      width: 100%; max-width: 520px; max-height: 88dvh; overflow-y: auto;
+      background: var(--bg2); border: 1px solid var(--line); border-radius: 22px 22px 0 0;
+      padding: 18px 18px calc(env(safe-area-inset-bottom) + 22px); animation: up .3s;
+    }
+    @keyframes up { from { transform: translateY(40px); opacity: .6 } to { transform: none; opacity: 1 } }
+    .sheet-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+    .sheet-head h3 { margin: 0; font-size: 19px; }
+    .sheet-head .close { background: var(--card); border: 1px solid var(--line); color: var(--text); width: 34px; height: 34px; border-radius: 10px; font-size: 17px; cursor: pointer; }
+
+    .field { margin-bottom: 14px; }
+    .field label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 7px; font-weight: 600; }
+    .opts { display: flex; flex-wrap: wrap; gap: 7px; }
+    .opt {
+      border: 1px solid var(--line); background: var(--card); color: var(--muted);
+      padding: 9px 13px; border-radius: 11px; font-size: 13px; font-weight: 600; cursor: pointer; transition: .12s;
+    }
+    .opt.on { background: linear-gradient(180deg, var(--gold), var(--gold2)); color: #2a1a00; border-color: transparent; }
+    .opt.all.on { background: var(--card2); color: var(--text); border-color: var(--gold); }
+
+    input[type=text], textarea {
+      width: 100%; background: var(--card); border: 1px solid var(--line); color: var(--text);
+      border-radius: 12px; padding: 12px; font-size: 15px; font-family: inherit;
+    }
+    textarea { min-height: 70px; resize: vertical; }
+
+    .toggle-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 4px 0; }
+    .toggle-row .label-wrap { font-size: 15px; font-weight: 700; }
+    .toggle-row .label-wrap small { display: block; color: var(--muted); font-weight: 400; font-size: 12.5px; margin-top: 2px; }
+    .switch { width: 52px; height: 31px; border-radius: 999px; background: var(--card); border: 1px solid var(--line); position: relative; cursor: pointer; flex: none; transition: .2s; }
+    .switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 23px; height: 23px; border-radius: 50%; background: var(--muted); transition: .2s; }
+    .switch.on { background: linear-gradient(180deg, var(--green), #2bbd87); border-color: transparent; }
+    .switch.on::after { left: 26px; background: #fff; }
+
+    .primary-btn {
+      width: 100%; padding: 15px; border: 0; border-radius: 14px; font-weight: 800; font-size: 16px; cursor: pointer;
+      background: linear-gradient(180deg, var(--gold), var(--gold2)); color: #2a1a00; margin-top: 6px;
+    }
+    .ghost-btn { width: 100%; padding: 13px; border: 1px solid var(--line); border-radius: 14px; font-weight: 700; font-size: 14px; cursor: pointer; background: var(--card); color: var(--text); margin-top: 10px; }
+
+    .qlist { margin-top: 6px; }
+    .qrow { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 11px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; margin-bottom: 8px; }
+    .qrow .qmeta { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .qrow .del { background: rgba(255,93,177,.12); border: 1px solid rgba(255,93,177,.3); color: var(--r-mythic); border-radius: 9px; padding: 8px 11px; font-size: 13px; cursor: pointer; flex: none; }
+    .hint { color: var(--muted); font-size: 12.5px; text-align: center; margin: 10px 0 2px; }
+
+    /* Confetti */
+    #confetti { position: fixed; inset: 0; pointer-events: none; z-index: 80; }
+
+    .footer-note { text-align: center; color: var(--muted); font-size: 11px; margin-top: 14px; opacity: .7; }
+    .odds { display:flex; gap:6px; justify-content:center; flex-wrap:wrap; margin-top:10px; }
+    .odds span { font-size:11px; color:var(--muted); }
+    .odds b.common { color: var(--r-common); }
+    .odds b.rare { color: var(--r-rare); }
+    .odds b.legendary { color: var(--r-legendary); }
+    .odds b.mythic { color: var(--r-mythic); }
+  </style>
+</head>
+<body>
+  <header>
+    <button class="icon-btn left" id="openFilters" aria-label="Filters">⚙︎</button>
+    <h1>SIDEQUEST</h1>
+    <p>GAMBLE A MISSION · DO IT TODAY · WITH THE BOYS</p>
+    <button class="icon-btn right" id="openQuests" aria-label="Quests">＋</button>
+  </header>
+
+  <div class="segmented" id="vibe">
+    <button data-vibe="wholesome">Wholesome</button>
+    <button data-vibe="cheeky">Cheeky</button>
+    <button data-vibe="fullsend">Full Send</button>
+  </div>
+
+  <main>
+    <div class="machine">
+      <div class="reel-window">
+        <div class="reel" id="reel"></div>
+      </div>
+      <div class="odds">
+        <span><b class="common">●</b> Common</span>
+        <span><b class="rare">●</b> Rare</span>
+        <span><b class="legendary">●</b> Legendary</span>
+        <span><b class="mythic">●</b> Mythic</span>
+      </div>
+      <button class="lever" id="lever">🎰 SPIN THE QUEST</button>
+    </div>
+
+    <div class="empty" id="empty">
+      No quests match your filters.<br />Loosen them up and try again.
+    </div>
+
+    <section class="result" id="result"></section>
+
+    <div class="footer-note" id="poolNote"></div>
+  </main>
+
+  <!-- Filters sheet -->
+  <div class="sheet-backdrop" id="filtersSheet">
+    <div class="sheet">
+      <div class="sheet-head">
+        <h3>Filters & Stakes</h3>
+        <button class="close" data-close>✕</button>
+      </div>
+
+      <div class="field">
+        <label>Time you’ve got</label>
+        <div class="opts" data-group="time">
+          <div class="opt all on" data-val="any">Any</div>
+          <div class="opt" data-val="quick">≤ 1 hour</div>
+          <div class="opt" data-val="half">Half day</div>
+          <div class="opt" data-val="full">Full day</div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>How many lads</label>
+        <div class="opts" data-group="lads">
+          <div class="opt all on" data-val="any">Any</div>
+          <div class="opt" data-val="2">2</div>
+          <div class="opt" data-val="3">3</div>
+          <div class="opt" data-val="4">4</div>
+          <div class="opt" data-val="5">5+</div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Budget</label>
+        <div class="opts" data-group="budget">
+          <div class="opt all on" data-val="any">Any</div>
+          <div class="opt" data-val="free">Free</div>
+          <div class="opt" data-val="cheap">Cheap</div>
+          <div class="opt" data-val="splurge">Splurge</div>
+        </div>
+      </div>
+
+      <div class="field">
+        <div class="toggle-row">
+          <div class="label-wrap">Stakes &amp; forfeits
+            <small>Roll a forfeit for whoever bottles it</small>
+          </div>
+          <div class="switch" id="stakesSwitch"></div>
+        </div>
+      </div>
+
+      <button class="primary-btn" data-close>Done</button>
+    </div>
+  </div>
+
+  <!-- Quests sheet -->
+  <div class="sheet-backdrop" id="questsSheet">
+    <div class="sheet">
+      <div class="sheet-head">
+        <h3>Your Quests</h3>
+        <button class="close" data-close>✕</button>
+      </div>
+
+      <div id="editor">
+        <div class="field">
+          <label>Title</label>
+          <input type="text" id="qTitle" maxlength="42" placeholder="e.g. Crazy golf grudge match" />
+        </div>
+        <div class="field">
+          <label>What’s the mission?</label>
+          <textarea id="qDesc" maxlength="220" placeholder="Describe the sidequest…"></textarea>
+        </div>
+        <div class="field">
+          <label>Vibe</label>
+          <div class="opts pick" data-pick="spice">
+            <div class="opt on" data-val="wholesome">Wholesome</div>
+            <div class="opt" data-val="cheeky">Cheeky</div>
+            <div class="opt" data-val="fullsend">Full Send</div>
+          </div>
+        </div>
+        <div class="field">
+          <label>Rarity (how rare a roll)</label>
+          <div class="opts pick" data-pick="rarity">
+            <div class="opt on" data-val="common">Common</div>
+            <div class="opt" data-val="rare">Rare</div>
+            <div class="opt" data-val="legendary">Legendary</div>
+            <div class="opt" data-val="mythic">Mythic</div>
+          </div>
+        </div>
+        <div class="field">
+          <label>Time</label>
+          <div class="opts pick" data-pick="time">
+            <div class="opt on" data-val="quick">≤ 1 hour</div>
+            <div class="opt" data-val="half">Half day</div>
+            <div class="opt" data-val="full">Full day</div>
+          </div>
+        </div>
+        <div class="field">
+          <label>Budget</label>
+          <div class="opts pick" data-pick="budget">
+            <div class="opt on" data-val="free">Free</div>
+            <div class="opt" data-val="cheap">Cheap</div>
+            <div class="opt" data-val="splurge">Splurge</div>
+          </div>
+        </div>
+        <div class="field">
+          <label>Min lads</label>
+          <div class="opts pick" data-pick="minLads">
+            <div class="opt on" data-val="2">2</div>
+            <div class="opt" data-val="3">3</div>
+            <div class="opt" data-val="4">4</div>
+            <div class="opt" data-val="5">5</div>
+          </div>
+        </div>
+        <button class="primary-btn" id="addQuest">＋ Add quest</button>
+      </div>
+
+      <div class="hint" id="customCount"></div>
+      <div class="qlist" id="customList"></div>
+    </div>
+  </div>
+
+  <canvas id="confetti"></canvas>
+
+  <script src="quests.js"></script>
+  <script src="app.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+    }
+  </script>
+</body>
+</html>
