@@ -6,11 +6,8 @@
   var LS_CUSTOM = 'sq_custom_quests';
 
   var RARITY_WEIGHTS = { common: 60, rare: 28, legendary: 10, mythic: 2 };
-  var SPICE_INCLUDES = {
-    wholesome: ['wholesome'],
-    cheeky: ['wholesome', 'cheeky'],
-    fullsend: ['wholesome', 'cheeky', 'fullsend'],
-  };
+  // Vibe tiers are EXCLUSIVE: each vibe shows only its own quests, so flipping the
+  // slider visibly changes the pool and Full Send is always a real full send.
   var TIME_LABEL = { quick: '≤ 1 hour', half: 'Half day', full: 'Full day' };
   var BUDGET_LABEL = { free: 'Free', cheap: 'Cheap', splurge: 'Splurge' };
 
@@ -44,9 +41,8 @@
 
   // ---- Filtering ----
   function pool() {
-    var allowedSpice = SPICE_INCLUDES[settings.vibe] || SPICE_INCLUDES.cheeky;
     return allQuests().filter(function (q) {
-      if (allowedSpice.indexOf(q.spice) === -1) return false;
+      if (q.spice !== settings.vibe) return false;
       if (settings.time !== 'any' && q.time !== settings.time) return false;
       if (settings.budget !== 'any' && q.budget !== settings.budget) return false;
       if (settings.lads !== 'any') {
@@ -239,8 +235,18 @@
   vibeWrap.addEventListener('click', function (e) {
     var b = e.target.closest('button'); if (!b) return;
     settings.vibe = b.dataset.vibe; saveSettings(); renderVibe(); updatePoolNote();
+    refreshReelTeaser();
     buzz(8);
   });
+
+  // Rebuild the resting reel preview so the machine visibly reacts to vibe/filter changes.
+  function refreshReelTeaser() {
+    if (spinning) return;
+    var p = pool();
+    buildReel(p.length ? 'TAP SPIN' : 'NO QUESTS');
+    reel.style.transition = 'none';
+    reel.style.transform = 'translateY(' + ((132 - SLOT_H) / 2) + 'px)';
+  }
 
   // ---- Filters sheet ----
   var filtersSheet = document.getElementById('filtersSheet');
@@ -264,7 +270,7 @@
       var group = opt.closest('[data-group]').dataset.group;
       var key = group === 'time' ? 'time' : group === 'budget' ? 'budget' : 'lads';
       settings[key] = opt.dataset.val;
-      saveSettings(); setGroup(group, opt.dataset.val); updatePoolNote(); buzz(6);
+      saveSettings(); setGroup(group, opt.dataset.val); updatePoolNote(); refreshReelTeaser(); buzz(6);
       return;
     }
     var sw = e.target.closest('#stakesSwitch');
