@@ -1,5 +1,6 @@
 /* Sidequest service worker — network-first so updates show immediately, cache as offline fallback. */
-var CACHE = 'sidequest-v2';
+// Keep this version in lockstep with APP_VERSION in app.js; bump both every PR.
+var CACHE = 'sidequest-v3';
 var ASSETS = [
   './',
   './index.html',
