@@ -2,6 +2,9 @@
 (function () {
   'use strict';
 
+  // Bump every PR. Keep in lockstep with CACHE in sw.js (e.g. 'sidequest-v3').
+  var APP_VERSION = 'v3';
+
   var LS_SETTINGS = 'sq_settings';
   var LS_CUSTOM = 'sq_custom_quests';
 
@@ -361,6 +364,8 @@
   renderVibe();
   renderFilters();
   updatePoolNote();
+  var versionEl = document.getElementById('appVersion');
+  if (versionEl) versionEl.textContent = 'Sidequest ' + APP_VERSION;
 
   function escapeHtml(s) {
     return String(s).replace(/[&<>"']/g, function (c) {
